@@ -166,3 +166,155 @@ class Deposito(Transacao):
         if sucesso_transacao:
             conta.historico.adicionar_transacao(self)
         
+def menu():
+    menu = """
+    ============MENU============
+    [D]  - Depositar
+    [S]  - Sacar
+    [E]  - Extrato
+    [NC] - Criar nova conta
+    [LC] - Listar contas
+    [NU] - Criar novo usuário
+    [Q]  - Sair
+    
+    ============================ 
+    => """
+    return input(menu).upper()
+
+def filtrar_cliente(cpf, clientes):
+    clientes_filtrados = [cliente for cliente in clientes if cliente.cpf == cpf]
+    return clientes_filtrados[0] if clientes_filtrados else None
+
+def recuperar_conta_cliente(cliente):
+    if not cliente.contas:
+        print('@@@ Cliente não possui contas cadastradas @@@')
+        return 
+    return cliente.contas[0]
+
+def depositar(clientes):
+    cpf = input('Informe o CPF: ')
+    cliente = filtrar_cliente(cpf, clientes)
+    
+    if not cliente:
+        print('@@@ Cliente não encontrado! @@@')
+        return
+
+    valor = float(input('Informe o valor do depósito: '))
+    transacao = Deposito(valor)
+    
+    conta = recuperar_conta_cliente(cliente)
+    if not conta:
+        return
+    
+    cliente.realizar_transacao(conta, transacao)
+
+def sacar(clientes):
+    cpf = input('Informe o CPF do cliente: ')
+    cliente = filtrar_cliente(cpf, clientes)
+    
+    if not cliente:
+        print('@@@ Cliente não encontrado! @@@')
+        return
+    
+    valor = float(input('Informe o valor do saque: '))
+    transacao = Saque(valor)
+    
+    conta = recuperar_conta_cliente(cliente)
+    if not conta:
+        return
+    
+    cliente.realizar_transacao(conta, transacao)
+
+def exibir_extrato(clientes):
+    cpf = input('Informe o CPF do cliente: ')
+    cliente = filtrar_cliente(cpf, clientes)
+    
+    if not cliente:
+        print('@@@ Cliente não encontrado! @@@')
+        return
+    
+    conta = recuperar_conta_cliente(cliente)
+    if not conta:
+        return
+    
+    print(f'Extrato da conta {conta.numero}')
+    transacoes = conta.historico.transacoes
+    
+    extato = ""
+    if not transacoes:
+        print('@@@ Extrato vazio @@@')
+        return
+    else:
+        for transacao in transacoes:
+            extato += f"{transacao['data']} - {transacao['tipo']} - {transacao['valor']}\n"
+    print(extato)
+    print(f"Saldo atual: R$ {conta.saldo:.2f}")
+    
+def criar_conta(numero_conta, clientes, contas):
+    cpf = input('Informe o CPF do cliente: ')
+    cliente = filtrar_cliente(cpf, clientes)
+    
+    if not cliente:
+        print('@@@ Cliente não encontrado! @@@')
+        return
+    
+    conta = ContaCorrente.nova_conta(cliente=cliente, numero=numero_conta)
+    contas.append(conta)
+    cliente.contas.append(conta)
+    
+    print('=== Conta criada com sucesso! ===')
+
+def listar_contas(contas):
+    for conta in contas:
+        print(conta)
+
+def criar_cliente(clientes):
+    cpf = input('Informe o CPF: ')
+    cliente = filtrar_cliente(cpf, clientes)
+    
+    if cliente:
+        print('@@@ Cliente já cadastrado! @@@')
+        return
+    
+    nome = input('Informe o nome completo: ')
+    data_nascimento = input('Informe a data de nascimento: ')
+    endereco = input('Informe o endereço (logradouro, nro - bairro - cidade/sigla do estado): ')
+    
+    cliente = PessoaFisica(nome=nome, data_nascimento=data_nascimento, cpf=cpf, endereco=endereco)
+    clientes.append(cliente)
+    
+    print('=== Cliente criado com sucesso! ===')
+
+def main():
+    clientes = []
+    contas = []
+    
+    while True:
+        opcao = menu()
+        
+        if opcao == 'D':
+            depositar(clientes)
+        
+        elif opcao == 'S':
+            sacar(clientes)
+            
+        elif opcao == 'E':
+            exibir_extrato(clientes)
+        
+        elif opcao == 'NU':
+            criar_cliente(clientes)
+        
+        elif opcao == 'NC':
+            numero_conta = len(contas) + 1
+            criar_conta(numero_conta, clientes, contas)
+            
+        elif opcao == 'LC':
+            listar_contas(contas)
+        
+        elif opcao == 'Q':
+            print('Saindo...')
+            print('Sistema encerrado!')
+            break
+        
+if __name__ == '__main__':
+    main()
