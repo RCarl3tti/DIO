@@ -1,12 +1,27 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 
+class ContaIterador:
+    def __init__(self, contas):
+        pass
+    
+    def __iter__(self):
+        pass
+    
+    def __next__(self):
+        pass
+
+
 class Cliente:
     def __init__(self, endereco):
         self.endereco = endereco
         self.contas = []
+        self.indice_conta = 0
         
     def realizar_transacao(self, conta, transacao):
+        if len(conta.historico.transacoes_do_dia()) >= 10:
+            print('@@@ Limite de transações diárias excedido @@@')
+            return
         transacao.registrar(conta)
         
     def adicionar_conta(self, conta):
@@ -112,14 +127,14 @@ class ContaCorrente(Conta):
 
 class Historico:
     def __init__(self):
-        self.transacoes = []
+        self._transacoes = []
         
     @property
     def transacoes(self):
         return self._transacoes
     
     def adicionar_transacao(self, transacao):
-        self.transacoes.append(
+        self._transacoes.append(
             {
                 "tipo": transacao.__class__.__name__,
                 "valor": transacao.valor,
@@ -127,6 +142,20 @@ class Historico:
                 ('%d/%m/%Y %H:%M:%S'),
             }
         )
+    
+    def gerar_relatorio(self, tipo_transacao=None):
+        for transacao in self._transacoes:
+            if not tipo_transacao is None or transacao['tipo'].lower == tipo_transacao.lower():
+                yield transacao
+                
+    def transacoes_do_dia(self):
+        data_atual = datetime.now().strftime('%d/%m/%Y')
+        transacoes = []
+        for transacao in self.transacoes:
+            data_transacao = datetime.strptime(transacao['data'], '%d/%m/%Y %H:%M:%S').date()
+            if data_atual == data_transacao:
+                transacoes.append(transacao)
+        return transacoes
         
 class Transacao(ABC):
     @property
@@ -166,6 +195,9 @@ class Deposito(Transacao):
         if sucesso_transacao:
             conta.historico.adicionar_transacao(self)
         
+def log_transacao(func):
+    pass        
+        
 def menu():
     menu = """
     ============MENU============
@@ -191,6 +223,8 @@ def recuperar_conta_cliente(cliente):
         return 
     return cliente.contas[0]
 
+
+@log_transacao
 def depositar(clientes):
     cpf = input('Informe o CPF: ')
     cliente = filtrar_cliente(cpf, clientes)
@@ -208,6 +242,8 @@ def depositar(clientes):
     
     cliente.realizar_transacao(conta, transacao)
 
+
+@log_transacao
 def sacar(clientes):
     cpf = input('Informe o CPF do cliente: ')
     cliente = filtrar_cliente(cpf, clientes)
@@ -225,6 +261,8 @@ def sacar(clientes):
     
     cliente.realizar_transacao(conta, transacao)
 
+
+@log_transacao
 def exibir_extrato(clientes):
     cpf = input('Informe o CPF do cliente: ')
     cliente = filtrar_cliente(cpf, clientes)
@@ -238,18 +276,22 @@ def exibir_extrato(clientes):
         return
     
     print(f'Extrato da conta {conta.numero}')
-    transacoes = conta.historico.transacoes
+    extrato = ""
+    tem_transacao = False
+    for transacao in conta.historico.gerar_relatorio():
+        tem_transacao = True
+        extrato += f"{transacao['data']} - {transacao['tipo']} - {transacao['valor']:.2f}\n"
     
     extato = ""
-    if not transacoes:
-        print('@@@ Extrato vazio @@@')
-        return
-    else:
-        for transacao in transacoes:
-            extato += f"{transacao['data']} - {transacao['tipo']} - {transacao['valor']}\n"
+    if not tem_transacao:
+        extato = "Sem transações realizadas"
+        
+        
     print(extato)
     print(f"Saldo atual: R$ {conta.saldo:.2f}")
     
+
+@log_transacao
 def criar_conta(numero_conta, clientes, contas):
     cpf = input('Informe o CPF do cliente: ')
     cliente = filtrar_cliente(cpf, clientes)
@@ -268,6 +310,8 @@ def listar_contas(contas):
     for conta in contas:
         print(conta)
 
+
+@log_transacao
 def criar_cliente(clientes):
     cpf = input('Informe o CPF: ')
     cliente = filtrar_cliente(cpf, clientes)
